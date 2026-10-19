@@ -29,11 +29,11 @@ Los cuatro laboratorios combinan **RBAC de Kubernetes** y **Kyverno** (Validate,
 |---|---|
 | Sistema | macOS (Apple Silicon) |
 | Contenedores | Podman (`KIND_EXPERIMENTAL_PROVIDER=podman`) |
-| Cluster | Kind, nombre `devopsdays` |
-| Kubernetes | v1.37.x (nodo Kind) |
+| Cluster | Kind `devopsdays` (Kind CLI v0.33.x) |
+| Kubernetes | v1.37.0 (`kindest/node:v1.37.0@sha256:a1ed56cf…` en `bootstrap/kind-config.yaml`) |
 | Helm | 3.x |
 | Kyverno | chart `3.9.1` / app `v1.19.1` |
-| GPUs simuladas | NVIDIA Mokka (`nvml-mock`) + device plugin mock |
+| GPUs simuladas | NVIDIA Mokka chart `nvml-mock` **`0.5.0-dev`** + device plugin mock |
 | Modelo local (Lab 03) | Ollama + `qwen2.5:3b` en el host |
 | Agente (Lab 03) | Python (`ollama`, `kubernetes`) como Job |
 
@@ -51,7 +51,7 @@ devopsdays-labs/
 ### Herramientas necesarias
 
 - [Podman](https://podman.io/)
-- [Kind](https://kind.sigs.k8s.io/)
+- [Kind](https://kind.sigs.k8s.io/) v0.33.x (imagen de nodo fijada en `bootstrap/kind-config.yaml`)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [Helm](https://helm.sh/) ≥ 3.8 (charts OCI)
 - [Ollama](https://ollama.com/) (solo Lab 03)
@@ -65,7 +65,9 @@ Los binarios de modelo (`.gguf`), tokens locales, `.venv/` y archivos `.tar` de 
 
 Los laboratorios asumen un cluster Kind llamado `devopsdays`, Kyverno instalado y, para el Lab 01, GPUs simuladas con Mokka.
 
-Los scripts en `bootstrap/` son operaciones **separadas** e idempotentes donde aplica. No recrean un cluster existente.
+Los scripts en `bootstrap/` son operaciones **separadas** e idempotentes donde aplica. **Ninguno borra ni recrea** un cluster Kind existente. Orden recomendado: `01` → `02` → `03` → `04` → `05` (el `05` exige Kyverno del `02`).
+
+> **Atención:** `02`–`05` sí modifican el cluster actual (Helm release, labels, DaemonSet privilegiado, namespaces, RBAC). Solo el bloque de [limpieza global](#limpieza-global) incluye `kind delete cluster`, que **destruye** el cluster.
 
 ### 1. Crear el cluster Kind con Podman
 
@@ -74,7 +76,11 @@ export KIND_EXPERIMENTAL_PROVIDER=podman
 ./bootstrap/01-create-cluster.sh
 ```
 
-Equivale a `kind create cluster --name devopsdays --config bootstrap/kind-config.yaml` si el cluster aún no existe.
+Usa `bootstrap/kind-config.yaml` con imagen fijada:
+
+`kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5`
+
+Si el cluster `devopsdays` ya existe, el script no lo modifica.
 
 ### 2. Instalar Kyverno v1.19.1
 
@@ -92,7 +98,7 @@ Estas no son GPUs físicas: Mokka expone un NVML mock y el device plugin registr
 ./bootstrap/03-install-mokka.sh
 ```
 
-El script aplica los valores verificados en el entorno de trabajo (`gpu.count=8`, `gpu.profile=h100`), etiqueta nodos con `mokka.nvidia.com/type=sgpu` y despliega `lab01-gpu/nvidia-device-plugin.yaml`.
+Instala el chart OCI `nvml-mock` versión **`0.5.0-dev`** con `gpu.count=8` y `gpu.profile=h100`, etiqueta nodos con `mokka.nvidia.com/type=sgpu` y despliega `lab01-gpu/nvidia-device-plugin.yaml`.
 
 Deberías ver `8` en la columna `GPUS`.
 
@@ -104,7 +110,7 @@ Deberías ver `8` en la columna `GPUS`.
 
 ### 5. RBAC del Background Controller (Lab 03 Generate/Synchronize)
 
-Necesario antes de demostrar `GeneratingPolicy` en el Lab 03:
+Necesario antes de demostrar `GeneratingPolicy` en el Lab 03. Requiere que exista `kyverno/kyverno-background-controller` (paso 2).
 
 ```bash
 ./bootstrap/05-apply-kyverno-generate-rbac.sh
@@ -112,10 +118,11 @@ Necesario antes de demostrar `GeneratingPolicy` en el Lab 03:
 
 Aplica:
 
-- `lab03-ai-agent/kyverno-generate-permissions.yaml` — Role/RoleBinding en `ai-agent-lab` para que `kyverno-background-controller` gestione Roles y RoleBindings del namespace.
-- `lab03-ai-agent/kyverno-watch-rbac.yaml` — ClusterRole/ClusterRoleBinding con `list`/`watch` de Roles y RoleBindings (el watcher de synchronize opera a nivel de cluster).
+- `lab03-ai-agent/kyverno-generate-permissions.yaml` — Role/RoleBinding en `ai-agent-lab` (`get/list/watch/create/update/patch/delete` sobre Roles y RoleBindings) para Generate y Synchronize.
+- `lab03-ai-agent/kyverno-watch-rbac.yaml` — ClusterRole/ClusterRoleBinding con `list`/`watch` de Roles y RoleBindings (el watcher de synchronize en Kyverno v1.19 opera a nivel de cluster).
 
 No se concede `cluster-admin`. Synchronize restaura recursos generados tras detectar drift; **no** elimina ventanas temporales de exposición de privilegios.
+
 ---
 
 ## Resumen de laboratorios
@@ -712,8 +719,10 @@ kubectl delete -f lab04-ai-traceability/ai-metadata-mutate.yaml --ignore-not-fou
 
 ## Limpieza global
 
+Los comandos siguientes **borran recursos**. El último destruye el cluster Kind completo.
+
 ```bash
-# Workloads y políticas por lab
+# Workloads y políticas por lab (no destruye el cluster)
 kubectl delete deployment,job,pod --all -n ai-dev --ignore-not-found
 kubectl delete deployment,job,pod --all -n ai-ml --ignore-not-found
 kubectl delete deployment,job,pod --all -n ai-prod --ignore-not-found
@@ -738,9 +747,11 @@ kubectl delete -f lab01-gpu/nvidia-device-plugin.yaml --ignore-not-found
 # Opcional: borrar namespaces de labs
 kubectl delete ns ai-dev ai-ml ai-prod ai-supply ai-agent-lab ai-traceability --ignore-not-found
 
-# Opcional: desinstalar plataforma
+# Opcional: desinstalar plataforma (Helm)
 helm uninstall nvml-mock -n mokka 2>/dev/null || true
 helm uninstall kyverno -n kyverno 2>/dev/null || true
+
+# DESTRUCTIVO: elimina por completo el cluster Kind devopsdays
 kind delete cluster --name devopsdays
 ```
 

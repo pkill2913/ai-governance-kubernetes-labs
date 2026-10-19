@@ -1,7 +1,12 @@
 # Kind cluster config matching the workshop environment:
 # single control-plane node on Apple Silicon via Podman.
 # Create with: bootstrap/01-create-cluster.sh
+#
+# Node image pin matches Kind v0.33.0's default for Kubernetes v1.37.0 and the
+# image digest used by the tested devopsdays cluster:
+#   kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
   - role: control-plane
+    image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5

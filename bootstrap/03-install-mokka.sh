@@ -2,14 +2,16 @@
 # Install NVIDIA Mokka (nvml-mock) and the mock device plugin from this repo.
 # Simulated GPUs only — no physical NVIDIA hardware required.
 # Values match the tested workshop cluster: gpu.count=8, gpu.profile=h100.
+# Prerequisite: Kind cluster (script 01). Does not delete the cluster.
+# Note: deploys a privileged device-plugin DaemonSet (expected for Mokka).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAMESPACE="${MOKKA_NAMESPACE:-mokka}"
 RELEASE="${MOKKA_RELEASE:-nvml-mock}"
-# Chart installed in the working lab was nvml-mock-0.5.0-dev (no explicit pin
-# was required). Override with MOKKA_CHART_VERSION if you need a fixed OCI tag.
-CHART_VERSION="${MOKKA_CHART_VERSION:-}"
+# Pin matches the tested workshop release (chart + appVersion 0.5.0-dev).
+# Override with MOKKA_CHART_VERSION only if you intentionally diverge.
+CHART_VERSION="${MOKKA_CHART_VERSION:-0.5.0-dev}"
 GPU_COUNT="${MOKKA_GPU_COUNT:-8}"
 GPU_PROFILE="${MOKKA_GPU_PROFILE:-h100}"
 DEVICE_PLUGIN_MANIFEST="${ROOT_DIR}/lab01-gpu/nvidia-device-plugin.yaml"
