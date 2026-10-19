@@ -1,0 +1,34 @@
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
+metadata:
+  name: assign-ai-ownership
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["deployments"]
+  matchConditions:
+    - name: ai-traceability
+      expression: request.namespace == "ai-traceability"
+  variables:
+    - name: ns
+      expression: resource.Get("v1", "namespaces", "", request.namespace)
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: |
+          [
+            JSONPatch{
+              op: "add",
+              path: "/metadata/labels/ai.company.io~1team",
+              value: variables.ns.metadata.labels["ai.company.io/team"]
+            },
+            JSONPatch{
+              op: "add",
+              path: "/metadata/labels/ai.company.io~1cost-center",
+              value: variables.ns.metadata.labels["ai.company.io/cost-center"]
+            }
+          ]

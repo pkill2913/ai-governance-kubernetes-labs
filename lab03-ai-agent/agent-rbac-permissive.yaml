@@ -1,0 +1,12 @@
+# Permissive Role for Lab 03 demos that exercise delete_deployment.
+# Apply BEFORE protect-ai-agent-permissions, or temporarily remove that
+# ValidatingPolicy if you need to restore delete after it is enforced.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-operator-role
+  namespace: ai-agent-lab
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "delete"]

@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-inference-auto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-inference-auto
+  template:
+    metadata:
+      labels:
+        app: ai-inference-auto
+    spec:
+      containers:
+        - name: inference
+          image: nginx:alpine
+          resources:
+            limits:
+              memory: 128Mi
+              cpu: "500m"

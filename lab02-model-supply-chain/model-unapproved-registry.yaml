@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: model-unapproved-registry
+  namespace: ai-supply
+spec:
+  restartPolicy: Never
+  # Init container matches the approved verifier so require-ai-model-verification
+  # is satisfied; the main image uses a non-docker.io registry and must be denied
+  # by restrict-ai-registries before any image pull occurs.
+  initContainers:
+    - name: verify-model
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - 'echo "$EXPECTED_SHA256  /models/model.gguf" | sha256sum -c -'
+      env:
+        - name: EXPECTED_SHA256
+          value: "ed5fa30c487b282ec156c29062f1222e5c20875a944ac98289dbd242e947f747"
+      volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+  containers:
+    - name: inference
+      image: quay.io/quay/busybox:latest
+      command: ["sh", "-c", "echo 'Should never start'; sleep 3600"]
+      volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+  volumes:
+    - name: models
+      persistentVolumeClaim:
+        claimName: ai-model-storage

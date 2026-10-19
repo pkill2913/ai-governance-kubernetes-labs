@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-api
+  namespace: ai-agent-lab
+  labels:
+    app: payment-api
+  annotations:
+    incident: Repeated failures reported. Investigate before taking action.
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-api
+  template:
+    metadata:
+      labels:
+        app: payment-api
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine

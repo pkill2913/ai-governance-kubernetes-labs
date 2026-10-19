@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: model-verification
+  namespace: ai-supply
+spec:
+  restartPolicy: Never
+  initContainers:
+    - name: verify-model
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - 'echo "$EXPECTED_SHA256  /models/model.gguf" | sha256sum -c -'
+      env:
+        - name: EXPECTED_SHA256
+          value: "ed5fa30c487b282ec156c29062f1222e5c20875a944ac98289dbd242e947f747"
+      volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+  containers:
+    - name: inference
+      image: busybox:1.36
+      command: ["sh", "-c", "echo 'Model verified. Starting inference...'; sleep 3600"]
+      volumeMounts:
+        - name: models
+          mountPath: /models
+          readOnly: true
+  volumes:
+    - name: models
+      persistentVolumeClaim:
+        claimName: ai-model-storage

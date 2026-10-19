@@ -1,0 +1,11 @@
+# Restricted Role for Lab 03 demos that expect HTTP 403 on delete.
+# Safe to apply while protect-ai-agent-permissions is enforced.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ai-operator-role
+  namespace: ai-agent-lab
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]

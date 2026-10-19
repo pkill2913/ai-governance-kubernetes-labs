@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ai-agent
+  namespace: ai-agent-lab
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      serviceAccountName: ai-operator
+      restartPolicy: Never
+      containers:
+        - name: agent
+          image: localhost/ai-agent:lab03
+          imagePullPolicy: Never
+          env:
+            - name: OLLAMA_URL
+              value: "http://host.containers.internal:11434"
+            - name: AGENT_SCENARIO
+              value: "authorized-delete"

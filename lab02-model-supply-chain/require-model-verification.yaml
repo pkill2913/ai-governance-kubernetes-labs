@@ -1,0 +1,37 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-ai-model-verification
+spec:
+  validationActions: [Deny]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: ai-supply-only
+      expression: request.namespace == "ai-supply"
+  validations:
+    - message: "AI Governance: approved model verifier and checksum required."
+      expression: |
+        object.spec.?initContainers.orValue([]).exists(c,
+          c.name == "verify-model" &&
+          c.image == "busybox:1.36" &&
+          c.command == [
+            "sh",
+            "-c",
+            "echo \"$EXPECTED_SHA256  /models/model.gguf\" | sha256sum -c -"
+          ] &&
+          c.?env.orValue([]).exists(e,
+            e.name == "EXPECTED_SHA256" &&
+            has(e.value) &&
+            e.value == "ed5fa30c487b282ec156c29062f1222e5c20875a944ac98289dbd242e947f747"
+          ) &&
+          c.?volumeMounts.orValue([]).exists(m,
+            m.name == "models" &&
+            m.mountPath == "/models" &&
+            m.readOnly == true
+          )
+        )

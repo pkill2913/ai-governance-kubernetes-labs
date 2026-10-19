@@ -1,0 +1,28 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: require-ai-model-metadata
+spec:
+  validationActions: [Deny]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments"]
+  matchConditions:
+    - name: ai-namespace
+      expression: request.namespace == "ai-traceability"
+  validations:
+    - message: "AI Governance: model name is required."
+      expression: |
+        'ai.company.io/model' in object.metadata.?labels.orValue({})
+    - message: "AI Governance: model version is required."
+      expression: |
+        'ai.company.io/version' in object.metadata.?labels.orValue({})
+    - message: "AI Governance: team ownership is required."
+      expression: |
+        'ai.company.io/team' in object.metadata.?labels.orValue({})
+    - message: "AI Governance: cost center is required."
+      expression: |
+        'ai.company.io/cost-center' in object.metadata.?labels.orValue({})

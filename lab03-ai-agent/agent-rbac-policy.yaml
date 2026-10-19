@@ -1,0 +1,25 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: protect-ai-agent-permissions
+spec:
+  validationActions: [Deny]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["roles"]
+  matchConditions:
+    - name: protected-agent-role
+      expression: >
+        request.namespace == "ai-agent-lab" &&
+        object.metadata.name == "ai-operator-role"
+  validations:
+    - message: "AI Governance: destructive permissions are forbidden for AI agents."
+      expression: |
+        object.rules.all(r,
+          !r.verbs.exists(v,
+            v in ["delete", "deletecollection", "*"]
+          )
+        )

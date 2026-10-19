@@ -1,0 +1,32 @@
+apiVersion: policies.kyverno.io/v1
+kind: MutatingPolicy
+metadata:
+  name: assign-gpus-by-environment
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["deployments"]
+  matchConditions:
+    - name: ai-environments
+      expression: >
+        request.namespace in ["ai-dev", "ai-ml", "ai-prod"]
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: |
+          has(object.spec.template.spec.containers[0].resources) &&
+          has(object.spec.template.spec.containers[0].resources.limits) &&
+          "nvidia.com/gpu" in object.spec.template.spec.containers[0].resources.limits
+          ? []
+          : [
+              JSONPatch{
+                op: "add",
+                path: "/spec/template/spec/containers/0/resources/limits/nvidia.com~1gpu",
+                value: request.namespace == "ai-dev" ? 1 :
+                       request.namespace == "ai-ml" ? 2 : 8
+              }
+            ]

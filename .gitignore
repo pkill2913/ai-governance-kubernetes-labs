@@ -1,0 +1,50 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local credentials and tokens
+.env
+.env.*
+*.pem
+*.key
+kubeconfig
+kubeconfig.*
+**/agent-token.txt
+**/*-token.txt
+**/*.token
+
+# Container image archives
+*.tar
+*.tar.gz
+lab03-ai-agent/ai-agent.tar
+
+# Model binaries (download via lab02-model-supply-chain/download-model.sh)
+*.gguf
+lab02-model-supply-chain/models/*.gguf
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary logs and workshop output
+*.log
+tmp/
+.tmp/
+output/
+*.out

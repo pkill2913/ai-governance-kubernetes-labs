@@ -1,0 +1,51 @@
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  name: generate-ai-agent-rbac
+spec:
+  evaluation:
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["serviceaccounts"]
+
+  matchConditions:
+    - name: ai-agent
+      expression: >
+        object.metadata.namespace == "ai-agent-lab" &&
+        object.metadata.name == "ai-operator"
+
+  generate:
+    - template:
+        interpolate: none
+        value: |
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: Role
+          metadata:
+            name: ai-agent-readonly
+            namespace: ai-agent-lab
+          rules:
+            - apiGroups: ["apps"]
+              resources: ["deployments"]
+              verbs: ["get", "list"]
+          ---
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: ai-agent-readonly-binding
+            namespace: ai-agent-lab
+          subjects:
+            - kind: ServiceAccount
+              name: ai-operator
+              namespace: ai-agent-lab
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: Role
+            name: ai-agent-readonly

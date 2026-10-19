@@ -1,0 +1,23 @@
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: restrict-ai-registries
+spec:
+  validationActions: [Deny]
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  matchConditions:
+    - name: ai-supply-only
+      expression: request.namespace == "ai-supply"
+  validations:
+    - message: "AI Governance: container registry not approved."
+      expression: |
+        (
+          object.spec.containers +
+          object.spec.?initContainers.orValue([]) +
+          object.spec.?ephemeralContainers.orValue([])
+        ).all(c, image(c.image).registry() == "docker.io")

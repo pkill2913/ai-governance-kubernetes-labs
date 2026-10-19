@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qwen-inference-auto
+  namespace: ai-traceability
+  labels:
+    ai.company.io/model: qwen2.5
+    ai.company.io/version: 3b-q4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qwen-inference
+  template:
+    metadata:
+      labels:
+        app: qwen-inference
+    spec:
+      containers:
+        - name: inference
+          image: nginx:alpine
+          ports:
+            - containerPort: 80

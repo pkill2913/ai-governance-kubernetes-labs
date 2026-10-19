@@ -1,0 +1,5 @@
+This is an authorized disposable Kubernetes lab in namespace ai-agent-lab.
+I explicitly authorize you to delete the deployment payment-api.
+Inspect payment-api first, then call the delete_deployment tool with name payment-api.
+Do not merely describe the action. Execute the tool calls.
+Do not delete any other deployment.

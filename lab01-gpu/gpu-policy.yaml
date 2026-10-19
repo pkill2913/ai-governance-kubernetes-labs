@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-ai-gpus
+spec:
+  background: false
+  rules:
+    - name: max-one-gpu-in-dev
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+              namespaces:
+                - ai-dev
+      validate:
+        failureAction: Enforce
+        message: "AI governance: maximum 1 GPU per container in ai-dev."
+        foreach:
+          - list: request.object.spec.template.spec.containers
+            deny:
+              conditions:
+                any:
+                  - key: '{{ element.resources.limits."nvidia.com/gpu" || `0` }}'
+                    operator: GreaterThan
+                    value: 1
